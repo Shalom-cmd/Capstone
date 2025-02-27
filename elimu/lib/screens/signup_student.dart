@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
 
 class SignUpStudentPage extends StatefulWidget {
@@ -10,14 +11,14 @@ class SignUpStudentPage extends StatefulWidget {
 }
 
 class _SignUpStudentPageState extends State<SignUpStudentPage> {
-  // Section 1: Teacher/Parent Input
+  
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController gradeController = TextEditingController();
-  final TextEditingController classCodeController = TextEditingController();
+  final TextEditingController addressConroller = TextEditingController();
   final TextEditingController parentEmailController = TextEditingController();
 
-  // Section 2: Student Input
+
   final TextEditingController studentFirstNameController = TextEditingController();
   final TextEditingController favoriteAnimalController = TextEditingController();
   final TextEditingController favoriteColorController = TextEditingController();
@@ -28,7 +29,7 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
   String generatedPassword = "";
 
   final List<String> animalNames = [
-    "Tiger", "Penguin", "Lion", "Dolphin", "Giraffe", "Elephant", "Panda", "Koala", "Zebra"
+    "Tiger", "Penguin", "Lion", "Dolphin", "Giraffe", "Elephant", "Panda", "Koala", "Zebra", "Whale", "Dog", "Cat", "Hamster"
   ];
 
   String generateUsername(String firstName) {
@@ -61,14 +62,25 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
 
     AuthService authService = AuthService();
     var user = await authService.signUpUser(
-      generatedUsername,
-      parentEmailController.text.trim(),
-      generatedPassword,
-      "student",
+      parentEmailController.text.trim(), 
+      generatedPassword,                 
+      "student",                        
+      generatedUsername,                 
     );
 
-    if (!mounted) return;
     if (user != null) {
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'fullName': "${firstNameController.text.trim()} ${lastNameController.text.trim()}",
+        'firstName': firstNameController.text.trim(),
+        'lastName': lastNameController.text.trim(),
+        'grade': gradeController.text.trim(),
+        'address': addressConroller.text.trim(),
+        'parentEmail': parentEmailController.text.trim(),
+        'username': generatedUsername, 
+        'role': "student",
+        'uid': user.uid, 
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Student Registered Successfully!")),
       );
@@ -93,13 +105,13 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
             Text("👩‍🏫 To be filled out by teacher/parent", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             TextField(controller: firstNameController, decoration: InputDecoration(labelText: "First Name")),
             TextField(controller: lastNameController, decoration: InputDecoration(labelText: "Last Name")),
-            TextField(controller: gradeController, decoration: InputDecoration(labelText: "Grade")),
-            TextField(controller: classCodeController, decoration: InputDecoration(labelText: "Class Code")),
+            TextField(controller: gradeController, decoration: InputDecoration(labelText: "Grade", hintText: "Enter: Kindergarten or Grade 1, or Grade 2..")),
+            TextField(controller: addressConroller, decoration: InputDecoration(labelText: "Address", hintText: "Street address, City, State, Zip Code")),
             TextField(controller: parentEmailController, decoration: InputDecoration(labelText: "Parent Email")),
 
             SizedBox(height: 20),
 
-            // Section 2: Student Input
+            
             Text("🧒 For the student", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             TextField(controller: studentFirstNameController, decoration: InputDecoration(labelText: "Your First Name")),
 
@@ -116,8 +128,6 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
 
             SizedBox(height: 20),
 
-            // Password Generation
-            Text("Create a fun password!", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             TextField(controller: favoriteAnimalController, decoration: InputDecoration(labelText: "Favorite Animal")),
             TextField(controller: favoriteColorController, decoration: InputDecoration(labelText: "Favorite Color")),
             TextField(controller: favoriteNumberController, decoration: InputDecoration(labelText: "Favorite One-Digit Number")),
