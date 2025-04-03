@@ -6,7 +6,7 @@ class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Sign up function
-  Future<User?> signUpUser(String email, String password, String role, String username) async {
+  Future<User?> signUpUser(String email, String password, String role, String username, String school) async {
     try {
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -16,9 +16,14 @@ class AuthService {
       User? user = userCredential.user;
 
       if (user != null) {
-        await _firestore.collection('users').doc(user.uid).set({
+        // Save user data under the correct school collection
+        await _firestore.collection('schools') // Use school name or code
+            .doc(school) // School name or code as the document ID
+            .collection(role) // Teachers, Students, Admins
+            .doc(user.uid) // Store the user data by UID
+            .set({
           'email': email,
-          'username': username, 
+          'username': username,
           'role': role,
           'uid': user.uid,
           'createdAt': DateTime.now(),

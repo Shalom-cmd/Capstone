@@ -45,3 +45,8 @@ android {
 flutter {
     source = "../.."
 }
+
+defaultConfig {
+    minSdkVersion 19
+    multiDexEnabled true
+}

@@ -57,7 +57,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
         children: [
           DrawerHeader(
             decoration: BoxDecoration(color: Colors.blue),
-            child: Text("📚 ELIMU Dashboard", style: TextStyle(fontSize: 24, color: Colors.white)),
+            child: Text("📚 Dashboard", style: TextStyle(fontSize: 24, color: Colors.white)),
           ),
           _buildSidebarItem(Icons.home, "Home 🏠"),
           _buildSidebarItem(Icons.book, "My Classes 📚"),

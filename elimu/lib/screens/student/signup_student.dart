@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/auth_service.dart';
+import '../../services/auth_service.dart';
 
 class SignUpStudentPage extends StatefulWidget {
   const SignUpStudentPage({Key? key}) : super(key: key);
@@ -11,13 +11,13 @@ class SignUpStudentPage extends StatefulWidget {
 }
 
 class _SignUpStudentPageState extends State<SignUpStudentPage> {
-  
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController gradeController = TextEditingController();
-  final TextEditingController addressConroller = TextEditingController();
+  final TextEditingController addressController = TextEditingController();
   final TextEditingController parentEmailController = TextEditingController();
-
+  final TextEditingController parentPhoneNumberController = TextEditingController();
+  final TextEditingController schoolDomainController = TextEditingController();
 
   final TextEditingController studentFirstNameController = TextEditingController();
   final TextEditingController favoriteAnimalController = TextEditingController();
@@ -28,21 +28,16 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
   String generatedUsername = "";
   String generatedPassword = "";
 
-  final List<String> animalNames = [
-    "Tiger", "Penguin", "Lion", "Dolphin", "Giraffe", "Elephant", "Panda", "Koala", "Zebra", "Whale", "Dog", "Cat", "Hamster"
-  ];
-
-  String generateUsername(String firstName) {
-    final random = Random();
-    String animal = animalNames[random.nextInt(animalNames.length)];
-    int number = random.nextInt(99) + 1;
-    return "$firstName$animal$number";
+  String generateUsername(String firstName, String grade) {
+    String capitalizedFirst = firstName[0].toUpperCase() + firstName.substring(1).toLowerCase();
+    String cleanGrade = grade.trim(); // Keep spaces like "Grade 1"
+    return "$capitalizedFirst-$cleanGrade";
   }
 
   String generatePassword(String animal, String color, String number) {
     return "${animal[0].toUpperCase()}${animal.substring(1)}"
-           "${color[0].toUpperCase()}${color.substring(1)}"
-           "$number"; 
+        "${color[0].toUpperCase()}${color.substring(1)}"
+        "$number";
   }
 
   void createStudentAccount() async {
@@ -62,23 +57,50 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
 
     AuthService authService = AuthService();
     var user = await authService.signUpUser(
-      parentEmailController.text.trim(), 
-      generatedPassword,                 
-      "student",                        
-      generatedUsername,                 
+      parentEmailController.text.trim(),
+      generatedPassword,
+      "students",
+      generatedUsername,
+      schoolDomainController.text.trim(),
     );
 
     if (user != null) {
-      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+      String schoolDomain = schoolDomainController.text.trim();
+      String grade = gradeController.text.trim();
+
+      await FirebaseFirestore.instance
+          .collection('schools')
+          .doc(schoolDomain)
+          .collection('students')
+          .doc(user.uid)
+          .set({
         'fullName': "${firstNameController.text.trim()} ${lastNameController.text.trim()}",
         'firstName': firstNameController.text.trim(),
         'lastName': lastNameController.text.trim(),
-        'grade': gradeController.text.trim(),
-        'address': addressConroller.text.trim(),
+        'grade': grade,
+        'address': addressController.text.trim(),
         'parentEmail': parentEmailController.text.trim(),
-        'username': generatedUsername, 
+        'parentPhoneNumber': parentPhoneNumberController.text.trim(),
+        'schoolDomain': schoolDomain,
+        'username': generatedUsername,
         'role': "student",
-        'uid': user.uid, 
+        'uid': user.uid,
+      });
+
+      await FirebaseFirestore.instance
+          .collection('schools')
+          .doc(schoolDomain)
+          .collection('classes')
+          .doc(grade)
+          .collection('students')
+          .doc(user.uid)
+          .set({
+        'uid': user.uid,
+        'fullName': "${firstNameController.text.trim()} ${lastNameController.text.trim()}",
+        'username': generatedUsername,
+        'grade': grade,
+        'schoolDomain': schoolDomain,
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -101,17 +123,17 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Section 1: Teacher Input
             Text("👩‍🏫 To be filled out by teacher/parent", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             TextField(controller: firstNameController, decoration: InputDecoration(labelText: "First Name")),
             TextField(controller: lastNameController, decoration: InputDecoration(labelText: "Last Name")),
-            TextField(controller: gradeController, decoration: InputDecoration(labelText: "Grade", hintText: "Enter: Kindergarten or Grade 1, or Grade 2..")),
-            TextField(controller: addressConroller, decoration: InputDecoration(labelText: "Address", hintText: "Street address, City, State, Zip Code")),
+            TextField(controller: gradeController, decoration: InputDecoration(labelText: "Grade", hintText:"e.g. Grade 1, Grade 2, or Kindergarten")),
+            TextField(controller: addressController, decoration: InputDecoration(labelText: "Address", hintText: "e.g. 123 Main St, Springfield, CA 90210")),
             TextField(controller: parentEmailController, decoration: InputDecoration(labelText: "Parent Email")),
+            TextField(controller: parentPhoneNumberController, decoration: InputDecoration(labelText: "Parent Phone Number")),
+            TextField(controller: schoolDomainController, decoration: InputDecoration(labelText: "School Domain")),
 
             SizedBox(height: 20),
 
-            
             Text("🧒 For the student", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             TextField(controller: studentFirstNameController, decoration: InputDecoration(labelText: "Your First Name")),
 
@@ -119,7 +141,10 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
             ElevatedButton(
               onPressed: () {
                 setState(() {
-                  generatedUsername = generateUsername(studentFirstNameController.text);
+                  generatedUsername = generateUsername(
+                    studentFirstNameController.text.trim(),
+                    gradeController.text.trim(),
+                  );
                 });
               },
               child: Text("Generate Username"),
@@ -148,7 +173,11 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
             Text("Generated Password: $generatedPassword", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
 
             SizedBox(height: 10),
-            TextField(controller: confirmPasswordController, decoration: InputDecoration(labelText: "Confirm Password")),
+            TextField(
+              controller: confirmPasswordController,
+              decoration: InputDecoration(labelText: "Confirm Password"),
+              obscureText: false, // Always visible
+            ),
 
             SizedBox(height: 20),
             ElevatedButton(

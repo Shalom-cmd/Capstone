@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/auth_service.dart';
-import 'dashboard_teacher.dart'; 
-import 'signup_teacher.dart'; 
+import '../../services/auth_service.dart';
+import 'dashboard_teacher.dart';
+import 'signup_teacher.dart';
 
 class LoginTeacherPage extends StatefulWidget {
   const LoginTeacherPage({Key? key}) : super(key: key);
@@ -15,6 +15,7 @@ class _LoginTeacherPageState extends State<LoginTeacherPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool isLoading = false;
+  bool showPassword = false; // 👁️ New state for password visibility
 
   Future<void> loginUser() async {
     setState(() {
@@ -23,26 +24,19 @@ class _LoginTeacherPageState extends State<LoginTeacherPage> {
 
     try {
       AuthService authService = AuthService();
-      var user = await authService.loginUser(emailController.text.trim(), passwordController.text.trim());
+      var user = await authService.loginUser(
+        emailController.text.trim(),
+        passwordController.text.trim(),
+      );
 
       if (user != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("✅ Login Successful!")),
-        );
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => TeacherDashboard()),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("✅ Login Successful!")));
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => TeacherDashboard()));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("❌ Invalid email or password. Try again.")),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Invalid email or password. Try again.")));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("❌ Login failed. Please try again.")),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Login failed. Please try again.")));
     } finally {
       setState(() {
         isLoading = false;
@@ -59,40 +53,32 @@ class _LoginTeacherPageState extends State<LoginTeacherPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              "Welcome Back! 🎉",
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blueAccent),
-            ),
+            Text("Welcome Back! 🎉", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blueAccent)),
             SizedBox(height: 20),
-
             TextField(
               controller: emailController,
-              decoration: InputDecoration(
-                labelText: "Email",
-                prefixIcon: Icon(Icons.email),
-              ),
+              decoration: InputDecoration(labelText: "Email", prefixIcon: Icon(Icons.email)),
               keyboardType: TextInputType.emailAddress,
               style: TextStyle(fontSize: 18),
             ),
             TextField(
               controller: passwordController,
+              obscureText: !showPassword,
               decoration: InputDecoration(
                 labelText: "Password",
                 prefixIcon: Icon(Icons.lock),
                 suffixIcon: IconButton(
-                  icon: Icon(Icons.visibility),
+                  icon: Icon(showPassword ? Icons.visibility_off : Icons.visibility),
                   onPressed: () {
                     setState(() {
+                      showPassword = !showPassword;
                     });
                   },
                 ),
               ),
-              obscureText: true,
               style: TextStyle(fontSize: 18),
             ),
-
             SizedBox(height: 30),
-
             SizedBox(
               width: double.infinity,
               height: 55,
@@ -104,33 +90,15 @@ class _LoginTeacherPageState extends State<LoginTeacherPage> {
                 ),
                 child: isLoading
                     ? CircularProgressIndicator(color: Colors.white)
-                    : Text(
-                        "Login",
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
+                    : Text("Login", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
               ),
             ),
-
             SizedBox(height: 20),
-
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const SignUpTeacherPage()),
-                  );
-                },
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.blueAccent,
-                ),
-                child: Text(
-                  "Don't have an account? Sign Up",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const SignUpTeacherPage()));
+              },
+              child: Text("Don't have an account? Sign Up", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
