@@ -50,9 +50,6 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
     'gradeLevel': 'Grade Level',
     'grade': 'Grade',
     'username': 'Username',
-    'school': 'School Domain',
-    'schoolDomain': 'School Domain',
-    'role': 'Role',
   };
 
   Widget buildExpansionTile(String title, List<Map<String, dynamic>> users) {
