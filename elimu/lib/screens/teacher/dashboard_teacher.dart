@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'create_assignment_page.dart';
 import 'view_assignments_page.dart';
 import 'create_quiz_page.dart';
+import 'view_quizzes_page.dart';
+import 'class_resources_page.dart';
 
 class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({Key? key}) : super(key: key);
@@ -84,6 +86,16 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
               ),
             ),
             ListTile(
+              leading: const Icon(Icons.library_books),
+              title: const Text("Class Resources"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ClassResourcesPage()),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.assignment),
               title: const Text("Create Assignment"),
               onTap: () {
@@ -110,6 +122,16 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const CreateQuizPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.list),
+              title: Text("View Quizzes"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ViewQuizzesPage()),
                 );
               },
             ),

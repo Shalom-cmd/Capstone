@@ -15,8 +15,7 @@ class _LoginTeacherPageState extends State<LoginTeacherPage> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool isLoading = false;
-  bool showPassword = false; // 👁️ New state for password visibility
-
+  bool showPassword = false; 
   Future<void> loginUser() async {
     setState(() {
       isLoading = true;

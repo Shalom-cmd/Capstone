@@ -57,7 +57,7 @@ class _LoginStudentPageState extends State<LoginStudentPage> {
 
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => StudentDashboard(fullName: studentFullName)),
+            MaterialPageRoute(builder: (context) => StudentDashboard()),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
