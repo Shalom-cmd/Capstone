@@ -6,6 +6,7 @@ import 'view_assignments_page.dart';
 import 'create_quiz_page.dart';
 import 'view_quizzes_page.dart';
 import 'class_resources_page.dart';
+import 'grading_page.dart';
 
 class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({Key? key}) : super(key: key);
@@ -132,6 +133,16 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const ViewQuizzesPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.list),
+              title: Text("Grade Submissions"),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const GradingPage()),
                 );
               },
             ),

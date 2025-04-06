@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'student_resources_page.dart';
 import 'student_assignments_page.dart';
 import 'student_quizzes_page.dart';
+import 'view_grades_page.dart';
 
 class StudentDashboard extends StatefulWidget {
   const StudentDashboard({Key? key}) : super(key: key);
@@ -117,10 +118,13 @@ class _StudentDashboardState extends State<StudentDashboard> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.grade),
-              title: const Text("Grades"),
+              leading: Icon(Icons.grade),
+              title: Text("Grades"),
               onTap: () {
-                // TODO: Navigate to Grades Page
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ViewGradesPage()),
+                );
               },
             ),
             ListTile(
