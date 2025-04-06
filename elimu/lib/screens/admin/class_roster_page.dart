@@ -11,32 +11,21 @@ class ClassRosterPage extends StatefulWidget {
 }
 
 class _ClassRosterPageState extends State<ClassRosterPage> {
-  late Future<List<String>> classListFuture;
+  late Future<List<Map<String, dynamic>>> teacherListFuture;
+  late Future<List<Map<String, dynamic>>> studentListFuture;
 
   @override
   void initState() {
     super.initState();
-    classListFuture = fetchClassList();
+    teacherListFuture = fetchUsers('teachers');
+    studentListFuture = fetchUsers('students');
   }
 
-  Future<List<String>> fetchClassList() async {
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
+  Future<List<Map<String, dynamic>>> fetchUsers(String collection) async {
+    final snapshot = await FirebaseFirestore.instance
         .collection('schools')
         .doc(widget.schoolDomain)
-        .collection('classes')
-        .get();
-
-    return snapshot.docs.map((doc) => doc.id).toList();
-  }
-
-  Future<List<Map<String, dynamic>>> fetchUsersInClass(
-      String grade, String userType) async {
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('schools')
-        .doc(widget.schoolDomain)
-        .collection('classes')
-        .doc(grade)
-        .collection(userType)
+        .collection(collection)
         .get();
 
     return snapshot.docs
@@ -44,106 +33,68 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
         .toList();
   }
 
-  Widget buildUserTile(Map<String, dynamic> userData, String userType) {
-    return ListTile(
-      leading: Icon(userType == 'students' ? Icons.child_care : Icons.person),
-      title: Text(userData['fullName'] ?? 'Unknown'),
-      subtitle: Text(userType == 'students'
-          ? 'Username: ${userData['username'] ?? 'N/A'}'
-          : 'Email: ${userData['email'] ?? 'N/A'}'),
-      trailing: userData.containsKey('isApprovedByAdmin')
-          ? Switch(
-              value: userData['isApprovedByAdmin'],
-              onChanged: (value) {
-                FirebaseFirestore.instance
-                    .collection('schools')
-                    .doc(widget.schoolDomain)
-                    .collection('classes')
-                    .doc(userData['grade'])
-                    .collection(userData['role'] == 'student'
-                        ? 'students'
-                        : 'teachers')
-                    .doc(userData['uid'])
-                    .update({'isApprovedByAdmin': value});
-                setState(() {
-                  userData['isApprovedByAdmin'] = value;
-                });
-              },
-            )
-          : null,
+  final Map<String, String> readableLabels = {
+    'uid': 'Unique ID',
+    'fullName': 'Full Name',
+    'firstName': 'First Name',
+    'lastName': 'Last Name',
+    'email': 'Email',
+    'phoneNumber': 'Phone Number',
+    'homeAddress': 'Home Address',
+    'address': 'Address',
+    'parentEmail': 'Parent Email',
+    'parentPhoneNumber': 'Parent Phone',
+    'emergencyContactName': 'Emergency Contact Name',
+    'emergencyContactPhone': 'Emergency Contact Phone',
+    'emergencyContactEmail': 'Emergency Contact Email',
+    'gradeLevel': 'Grade Level',
+    'grade': 'Grade',
+    'username': 'Username',
+    'school': 'School Domain',
+    'schoolDomain': 'School Domain',
+    'role': 'Role',
+  };
+
+  Widget buildExpansionTile(String title, List<Map<String, dynamic>> users) {
+    return ExpansionTile(
+      title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+      children: users.map((user) {
+        final name = user['fullName'] ?? 'Unknown';
+        return ExpansionTile(
+          title: Text(name),
+          children: user.entries.map((entry) {
+            final label = readableLabels[entry.key] ?? entry.key;
+            final value = entry.value?.toString() ?? '';
+            return ListTile(
+              title: Text("$label: $value"),
+            );
+          }).toList(),
+        );
+      }).toList(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("📋 Class Roster")),
-      body: FutureBuilder<List<String>>(
-        future: classListFuture,
+      appBar: AppBar(title: Text("🏫 School Roster")),
+      body: FutureBuilder<List<List<Map<String, dynamic>>>>(
+        future: Future.wait([teacherListFuture, studentListFuture]),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (!snapshot.hasData || snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
           }
 
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(child: Text("No classes found."));
-          }
+          final teacherList = snapshot.data![0];
+          final studentList = snapshot.data![1];
 
-          final classList = snapshot.data!;
-          return ListView.builder(
-            itemCount: classList.length,
-            itemBuilder: (context, index) {
-              final grade = classList[index];
-              return ExpansionTile(
-                title: Text("📚 $grade", style: TextStyle(fontWeight: FontWeight.bold)),
-                children: [
-                  FutureBuilder<List<Map<String, dynamic>>>(
-                    future: fetchUsersInClass(grade, 'teachers'),
-                    builder: (context, teacherSnap) {
-                      if (teacherSnap.connectionState == ConnectionState.waiting) {
-                        return Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: LinearProgressIndicator(),
-                        );
-                      }
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Text("👩‍🏫 Teachers", style: TextStyle(fontWeight: FontWeight.bold)),
-                          ),
-                          ...teacherSnap.data!.map((teacher) => buildUserTile(teacher, 'teachers')),
-                        ],
-                      );
-                    },
-                  ),
-                  FutureBuilder<List<Map<String, dynamic>>>(
-                    future: fetchUsersInClass(grade, 'students'),
-                    builder: (context, studentSnap) {
-                      if (studentSnap.connectionState == ConnectionState.waiting) {
-                        return Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: LinearProgressIndicator(),
-                        );
-                      }
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Text("🧒 Students", style: TextStyle(fontWeight: FontWeight.bold)),
-                          ),
-                          ...studentSnap.data!.map((student) => buildUserTile(student, 'students')),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              );
-            },
+          return ListView(
+            padding: EdgeInsets.all(16),
+            children: [
+              buildExpansionTile("👩‍🏫 Teachers", teacherList),
+              SizedBox(height: 20),
+              buildExpansionTile("🧒 Students", studentList),
+            ],
           );
         },
       ),

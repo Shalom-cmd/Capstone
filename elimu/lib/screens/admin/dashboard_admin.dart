@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'class_roster_page.dart'; // Import the page we made
+import 'class_roster_page.dart'; 
 
 class AdminDashboardPage extends StatelessWidget {
   final String schoolDomain;
@@ -20,7 +20,7 @@ class AdminDashboardPage extends StatelessWidget {
           IconButton(
             icon: Icon(Icons.logout),
             onPressed: () {
-              // Add your logout logic
+              // Add logout logic
             },
           )
         ],
