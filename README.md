@@ -1,7 +1,8 @@
 ##
-Capstone Project
-Shalom Mwiti
-Spring 2025
+# Capstone Project
+# Shalom Mwiti
+# Spring 2025
+
 Elimu is an independent project—currently in progress—that I’m working on in my final semester of college.
 It is a supplemental Learning Management System (LMS) focused on elementary school students.
 
