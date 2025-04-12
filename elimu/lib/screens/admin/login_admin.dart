@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'dashboard_admin.dart'; // Import the Admin Dashboard
-import 'signup_admin.dart'; // Import Sign Up Admin Page
-import '../../services/auth_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/auth_service.dart';
+import 'dashboard_admin.dart';
+import 'signup_admin.dart';
 
 class LoginAdminPage extends StatefulWidget {
   const LoginAdminPage({Key? key}) : super(key: key);
@@ -16,86 +17,98 @@ class _LoginAdminPageState extends State<LoginAdminPage> {
   final TextEditingController passwordController = TextEditingController();
   bool isLoading = false;
 
-  // Email validation
   bool isEmailValid(String email) {
     return RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").hasMatch(email);
   }
 
-  // Validate login input
-Future<void> loginAdmin() async {
-  if (emailController.text.trim().isEmpty || passwordController.text.trim().isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter both email and password")));
-    return;
-  }
-
-  if (!isEmailValid(emailController.text.trim())) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter a valid email address")));
-    return;
-  }
-
-  setState(() {
-    isLoading = true;
-  });
-
-  try {
-    AuthService authService = AuthService();
-    var user = await authService.loginUser(
-      emailController.text.trim(),
-      passwordController.text.trim(),
-    );
-
-  if (user != null) {
-    // 🔍 Search all schools for this admin
-    final schools = await FirebaseFirestore.instance.collection('schools').get();
-
-    DocumentSnapshot? adminDoc;
-    String foundSchoolDomain = '';
-    String adminName = '';
-
-    for (var school in schools.docs) {
-      var adminSnapshot = await FirebaseFirestore.instance
-          .collection('schools')
-          .doc(school.id)
-          .collection('admins')
-          .doc(user.uid)
-          .get();
-
-      if (adminSnapshot.exists) {
-        adminDoc = adminSnapshot;
-        foundSchoolDomain = school.id; // this is your schoolDomain
-        adminName = adminSnapshot['fullName'] ?? 'Admin';
-        break;
-      }
+  Future<void> loginAdmin() async {
+    if (emailController.text.trim().isEmpty || passwordController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter both email and password")));
+      return;
     }
 
-    if (adminDoc != null) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => AdminDashboardPage(
-            schoolDomain: foundSchoolDomain,
-            adminName: adminName,
-          ),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Admin profile not found.")),
-      );
+    if (!isEmailValid(emailController.text.trim())) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter a valid email address")));
+      return;
     }
-  }
- else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Invalid credentials")));
-    }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Login failed: $e")));
-  } finally {
+
     setState(() {
-      isLoading = false;
+      isLoading = true;
     });
-  }
-}
 
+    try {
+      AuthService authService = AuthService();
+      var user = await authService.loginUser(
+        emailController.text.trim(),
+        passwordController.text.trim(),
+      );
+
+      if (user != null) {
+        if (!user.emailVerified) {
+          await authService.logout();
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please verify your email before logging in.")));
+          return;
+        }
+
+        final schools = await FirebaseFirestore.instance.collection('schools').get();
+        DocumentSnapshot? adminDoc;
+        String foundSchoolDomain = '';
+        String adminName = '';
+
+        for (var school in schools.docs) {
+          var adminSnapshot = await FirebaseFirestore.instance
+              .collection('schools')
+              .doc(school.id)
+              .collection('admins')
+              .doc(user.uid)
+              .get();
+
+          if (adminSnapshot.exists) {
+            adminDoc = adminSnapshot;
+            foundSchoolDomain = school.id;
+            adminName = adminSnapshot['fullName'] ?? 'Admin';
+            break;
+          }
+        }
+
+        if (adminDoc != null) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AdminDashboardPage(
+                schoolDomain: foundSchoolDomain,
+                adminName: adminName,
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Admin profile not found.")));
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Invalid credentials")));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Login failed: $e")));
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> resetPassword() async {
+    if (!isEmailValid(emailController.text.trim())) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter a valid email to reset password")));
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: emailController.text.trim());
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("📩 Password reset email sent!")));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to send reset email.")));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -108,20 +121,10 @@ Future<void> loginAdmin() async {
           children: [
             Text("Welcome Admin!", style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
             SizedBox(height: 20),
-            // Email input with validation
-            TextField(
-              controller: emailController,
-              decoration: InputDecoration(labelText: "Email"),
-            ),
+            TextField(controller: emailController, decoration: InputDecoration(labelText: "Email")),
             SizedBox(height: 20),
-            // Password input
-            TextField(
-              controller: passwordController,
-              decoration: InputDecoration(labelText: "Password"),
-              obscureText: true,
-            ),
+            TextField(controller: passwordController, decoration: InputDecoration(labelText: "Password"), obscureText: true),
             SizedBox(height: 30),
-            // Login button
             SizedBox(
               width: double.infinity,
               height: 55,
@@ -136,14 +139,14 @@ Future<void> loginAdmin() async {
                     : Text("Login", style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
+            TextButton(
+              onPressed: resetPassword,
+              child: Text("Forgot password? Reset here"),
+            ),
             SizedBox(height: 20),
-            // Sign-up navigation
             TextButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SignUpAdminPage()), // Navigate to the Sign Up Admin Page
-                );
+                Navigator.push(context, MaterialPageRoute(builder: (context) => SignUpAdminPage()));
               },
               child: Text("Don't have an account? Sign Up here", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),

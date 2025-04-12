@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
+import 'login_admin.dart';
 
 class SignUpAdminPage extends StatefulWidget {
   const SignUpAdminPage({Key? key}) : super(key: key);
@@ -19,9 +20,7 @@ class _SignUpAdminPageState extends State<SignUpAdminPage> {
 
   bool isLoading = false;
 
-  // Register admin
   Future<void> registerAdmin() async {
-    // Validate fields
     if (passwordController.text != confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Passwords do not match!")));
       return;
@@ -42,20 +41,18 @@ class _SignUpAdminPageState extends State<SignUpAdminPage> {
     });
 
     try {
-      // Create the admin user in Firebase Auth
       AuthService authService = AuthService();
       var user = await authService.signUpUser(
         emailController.text.trim(),
         passwordController.text.trim(),
-        "admin",
-        "",
+        "admins",
+        "", // No username for admins
         schoolDomainController.text.trim(),
       );
 
       if (user != null) {
         String schoolDomain = schoolDomainController.text.trim();
 
-        // Check if the school domain exists in Firestore
         var schoolDoc = await FirebaseFirestore.instance.collection('schools').doc(schoolDomain).get();
         if (!schoolDoc.exists) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("School domain not found. Please register the school first.")));
@@ -65,7 +62,6 @@ class _SignUpAdminPageState extends State<SignUpAdminPage> {
           return;
         }
 
-        // Add admin details to Firestore under the specific school's collection
         await FirebaseFirestore.instance
             .collection('schools')
             .doc(schoolDomain)
@@ -81,10 +77,13 @@ class _SignUpAdminPageState extends State<SignUpAdminPage> {
           'createdAt': FieldValue.serverTimestamp(),
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Admin Registered Successfully!")));
-        Navigator.pop(context); // Go back to login page
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("🎉 Admin Registered! Please verify your email before logging in.")),
+        );
+
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LoginAdminPage()));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Sign-up failed")));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Sign-up failed")));
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
@@ -108,14 +107,11 @@ class _SignUpAdminPageState extends State<SignUpAdminPage> {
             TextField(controller: passwordController, decoration: InputDecoration(labelText: "Password"), obscureText: true),
             TextField(controller: confirmPasswordController, decoration: InputDecoration(labelText: "Confirm Password"), obscureText: true),
             TextField(controller: adminLevelController, decoration: InputDecoration(labelText: "Admin Level (Super Admin/School Admin)")),
-            TextField(controller: schoolDomainController, decoration: InputDecoration(labelText: "Enter School Domain", hintText: "Example: chicoelementary.edu or chico123")),
+            TextField(controller: schoolDomainController, decoration: InputDecoration(labelText: "Enter School Domain")),
             SizedBox(height: 20),
             isLoading
                 ? CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: registerAdmin,
-                    child: Text("Sign Up"),
-                  ),
+                : ElevatedButton(onPressed: registerAdmin, child: Text("Sign Up")),
           ],
         ),
       ),

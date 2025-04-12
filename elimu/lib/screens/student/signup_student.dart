@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
+import 'login_student.dart';
 
 class SignUpStudentPage extends StatefulWidget {
   const SignUpStudentPage({Key? key}) : super(key: key);
@@ -27,10 +28,11 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
 
   String generatedUsername = "";
   String generatedPassword = "";
+  bool isLoading = false;
 
   String generateUsername(String firstName, String grade) {
     String capitalizedFirst = firstName[0].toUpperCase() + firstName.substring(1).toLowerCase();
-    String cleanGrade = grade.trim(); // Keep spaces like "Grade 1"
+    String cleanGrade = grade.trim();
     return "$capitalizedFirst-$cleanGrade";
   }
 
@@ -42,80 +44,89 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
 
   void createStudentAccount() async {
     if (generatedUsername.isEmpty || generatedPassword.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please generate a username & password first!")),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please generate a username & password first!")));
       return;
     }
 
     if (generatedPassword != confirmPasswordController.text.trim()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Passwords do not match!")),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Passwords do not match!")));
       return;
     }
 
-    AuthService authService = AuthService();
-    var user = await authService.signUpUser(
-      parentEmailController.text.trim(),
-      generatedPassword,
-      "students",
-      generatedUsername,
-      schoolDomainController.text.trim(),
-    );
+    setState(() {
+      isLoading = true;
+    });
 
-    if (user != null) {
-      String schoolDomain = schoolDomainController.text.trim();
-      String grade = gradeController.text.trim();
-
-      await FirebaseFirestore.instance
-          .collection('schools')
-          .doc(schoolDomain)
-          .collection('students')
-          .doc(user.uid)
-          .set({
-        'fullName': "${firstNameController.text.trim()} ${lastNameController.text.trim()}",
-        'firstName': firstNameController.text.trim(),
-        'lastName': lastNameController.text.trim(),
-        'grade': grade,
-        'address': addressController.text.trim(),
-        'parentEmail': parentEmailController.text.trim(),
-        'parentPhoneNumber': parentPhoneNumberController.text.trim(),
-        'schoolDomain': schoolDomain,
-        'username': generatedUsername,
-        'role': "student",
-        'uid': user.uid,
-      });
-
-      await FirebaseFirestore.instance
-          .collection('schools')
-          .doc(schoolDomain)
-          .collection('classes')
-          .doc(grade)
-          .collection('students')
-          .doc(user.uid)
-          .set({
-        'uid': user.uid,
-        'fullName': "${firstNameController.text.trim()} ${lastNameController.text.trim()}",
-        'username': generatedUsername,
-        'grade': grade,
-        'schoolDomain': schoolDomain,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Student Registered Successfully!")),
+    try {
+      AuthService authService = AuthService();
+      var user = await authService.signUpUser(
+        parentEmailController.text.trim(),
+        generatedPassword,
+        "students",
+        generatedUsername,
+        schoolDomainController.text.trim(),
       );
-      Navigator.pop(context);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Sign-up failed")),
-      );
+
+      if (user != null) {
+        String schoolDomain = schoolDomainController.text.trim();
+        String grade = gradeController.text.trim();
+
+        await FirebaseFirestore.instance
+            .collection('schools')
+            .doc(schoolDomain)
+            .collection('students')
+            .doc(user.uid)
+            .set({
+          'fullName': "${firstNameController.text.trim()} ${lastNameController.text.trim()}",
+          'firstName': firstNameController.text.trim(),
+          'lastName': lastNameController.text.trim(),
+          'grade': grade,
+          'address': addressController.text.trim(),
+          'parentEmail': parentEmailController.text.trim(),
+          'parentPhoneNumber': parentPhoneNumberController.text.trim(),
+          'schoolDomain': schoolDomain,
+          'username': generatedUsername,
+          'role': "student",
+          'uid': user.uid,
+        });
+
+        await FirebaseFirestore.instance
+            .collection('schools')
+            .doc(schoolDomain)
+            .collection('classes')
+            .doc(grade)
+            .collection('students')
+            .doc(user.uid)
+            .set({
+          'uid': user.uid,
+          'fullName': "${firstNameController.text.trim()} ${lastNameController.text.trim()}",
+          'username': generatedUsername,
+          'grade': grade,
+          'schoolDomain': schoolDomain,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("🎉 Account created! Please verify your parent's email before logging in.")),
+        );
+
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginStudentPage()));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Sign-up failed")));
+      }
+    } catch (e) {
+      print("Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Something went wrong. Please try again.")));
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // No layout changes needed here.
     return Scaffold(
       appBar: AppBar(title: Text("Student Sign-Up")),
       body: SingleChildScrollView(
@@ -126,14 +137,13 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
             Text("👩‍🏫 To be filled out by teacher/parent", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             TextField(controller: firstNameController, decoration: InputDecoration(labelText: "First Name")),
             TextField(controller: lastNameController, decoration: InputDecoration(labelText: "Last Name")),
-            TextField(controller: gradeController, decoration: InputDecoration(labelText: "Grade", hintText:"e.g. Grade 1, Grade 2, or Kindergarten")),
-            TextField(controller: addressController, decoration: InputDecoration(labelText: "Address", hintText: "e.g. 123 Main St, Springfield, CA 90210")),
+            TextField(controller: gradeController, decoration: InputDecoration(labelText: "Grade")),
+            TextField(controller: addressController, decoration: InputDecoration(labelText: "Address")),
             TextField(controller: parentEmailController, decoration: InputDecoration(labelText: "Parent Email")),
             TextField(controller: parentPhoneNumberController, decoration: InputDecoration(labelText: "Parent Phone Number")),
             TextField(controller: schoolDomainController, decoration: InputDecoration(labelText: "School Domain")),
 
             SizedBox(height: 20),
-
             Text("🧒 For the student", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             TextField(controller: studentFirstNameController, decoration: InputDecoration(labelText: "Your First Name")),
 
@@ -141,10 +151,7 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
             ElevatedButton(
               onPressed: () {
                 setState(() {
-                  generatedUsername = generateUsername(
-                    studentFirstNameController.text.trim(),
-                    gradeController.text.trim(),
-                  );
+                  generatedUsername = generateUsername(studentFirstNameController.text.trim(), gradeController.text.trim());
                 });
               },
               child: Text("Generate Username"),
@@ -152,7 +159,6 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
             Text("Generated Username: $generatedUsername", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
 
             SizedBox(height: 20),
-
             TextField(controller: favoriteAnimalController, decoration: InputDecoration(labelText: "Favorite Animal")),
             TextField(controller: favoriteColorController, decoration: InputDecoration(labelText: "Favorite Color")),
             TextField(controller: favoriteNumberController, decoration: InputDecoration(labelText: "Favorite One-Digit Number")),
@@ -172,17 +178,14 @@ class _SignUpStudentPageState extends State<SignUpStudentPage> {
             ),
             Text("Generated Password: $generatedPassword", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
 
-            SizedBox(height: 10),
-            TextField(
-              controller: confirmPasswordController,
-              decoration: InputDecoration(labelText: "Confirm Password"),
-              obscureText: false, // Always visible
-            ),
+            TextField(controller: confirmPasswordController, decoration: InputDecoration(labelText: "Confirm Password")),
 
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: createStudentAccount,
-              child: Text("Sign Up"),
+              onPressed: isLoading ? null : createStudentAccount,
+              child: isLoading
+                  ? CircularProgressIndicator(color: Colors.white)
+                  : Text("Sign Up"),
             ),
           ],
         ),
