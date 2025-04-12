@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
+import 'login_teacher.dart';
 
 class SignUpTeacherPage extends StatefulWidget {
   const SignUpTeacherPage({Key? key}) : super(key: key);
@@ -22,68 +23,86 @@ class _SignUpTeacherPageState extends State<SignUpTeacherPage> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
 
+  bool isLoading = false;
+
   Future<void> registerTeacher() async {
     if (passwordController.text != confirmPasswordController.text) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Passwords do not match!")));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Passwords do not match!")));
       return;
     }
 
-    AuthService authService = AuthService();
-    var user = await authService.signUpUser(
-      emailController.text.trim(),
-      passwordController.text.trim(),
-      "teacher",
-      "",
-      schoolDomainController.text.trim(),
-    );
+    setState(() {
+      isLoading = true;
+    });
 
-    if (user != null) {
-      String schoolDomain = schoolDomainController.text.trim();
-      String grade = gradeLevelController.text.trim();
+    try {
+      AuthService authService = AuthService();
+      var user = await authService.signUpUser(
+        emailController.text.trim(),
+        passwordController.text.trim(),
+        "teachers", // this should match your Firestore collection: 'teachers'
+        "", // username is empty for now
+        schoolDomainController.text.trim(),
+      );
 
-      // Save to teachers collection (full profile)
-      await FirebaseFirestore.instance
-          .collection('schools')
-          .doc(schoolDomain)
-          .collection('teachers')
-          .doc(user.uid)
-          .set({
-        'fullName': nameController.text.trim(),
-        'email': emailController.text.trim(),
-        'phoneNumber': phoneNumberController.text.trim(),
-        'gradeLevel': grade,
-        'school': schoolDomain,
-        'homeAddress': homeAddressController.text.trim(),
-        'emergencyContactName': emergencyContactNameController.text.trim(),
-        'emergencyContactPhone': emergencyContactPhoneController.text.trim(),
-        'emergencyContactEmail': emergencyContactEmailController.text.trim(),
-        'role': "teacher",
-        'uid': user.uid,
-        'createdAt': FieldValue.serverTimestamp(),
+      if (user != null) {
+        String schoolDomain = schoolDomainController.text.trim();
+        String grade = gradeLevelController.text.trim();
+
+        // Save full profile under 'teachers'
+        await FirebaseFirestore.instance
+            .collection('schools')
+            .doc(schoolDomain)
+            .collection('teachers')
+            .doc(user.uid)
+            .set({
+          'fullName': nameController.text.trim(),
+          'email': emailController.text.trim(),
+          'phoneNumber': phoneNumberController.text.trim(),
+          'gradeLevel': grade,
+          'school': schoolDomain,
+          'homeAddress': homeAddressController.text.trim(),
+          'emergencyContactName': emergencyContactNameController.text.trim(),
+          'emergencyContactPhone': emergencyContactPhoneController.text.trim(),
+          'emergencyContactEmail': emergencyContactEmailController.text.trim(),
+          'role': "teacher",
+          'uid': user.uid,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        // Summary in classes > grade > teachers
+        await FirebaseFirestore.instance
+            .collection('schools')
+            .doc(schoolDomain)
+            .collection('classes')
+            .doc(grade)
+            .collection('teachers')
+            .doc(user.uid)
+            .set({
+          'uid': user.uid,
+          'fullName': nameController.text.trim(),
+          'email': emailController.text.trim(),
+          'phoneNumber': phoneNumberController.text.trim(),
+          'grade': grade,
+          'schoolDomain': schoolDomain,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("🎉 Registration successful! Please verify your email before logging in.")),
+        );
+
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => LoginTeacherPage()));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Sign-up failed.")));
+      }
+    } catch (e) {
+      print("Error: $e");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Error occurred. Please try again.")));
+    } finally {
+      setState(() {
+        isLoading = false;
       });
-
-      // Add to classes collection (summary)
-      await FirebaseFirestore.instance
-          .collection('schools')
-          .doc(schoolDomain)
-          .collection('classes')
-          .doc(grade)
-          .collection('teachers')
-          .doc(user.uid)
-          .set({
-        'uid': user.uid,
-        'fullName': nameController.text.trim(),
-        'email': emailController.text.trim(),
-        'phoneNumber': phoneNumberController.text.trim(),
-        'grade': grade,
-        'schoolDomain': schoolDomain,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Teacher Registered Successfully!")));
-      Navigator.pop(context);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Sign-up failed")));
     }
   }
 
@@ -120,10 +139,31 @@ class _SignUpTeacherPageState extends State<SignUpTeacherPage> {
             TextField(controller: emergencyContactPhoneController, decoration: InputDecoration(labelText: "Phone")),
             TextField(controller: emergencyContactEmailController, decoration: InputDecoration(labelText: "Email")),
             SizedBox(height: 20),
-            TextField(controller: passwordController, decoration: InputDecoration(labelText: "Password"), obscureText: true),
-            TextField(controller: confirmPasswordController, decoration: InputDecoration(labelText: "Confirm Password"), obscureText: true),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              decoration: InputDecoration(labelText: "Password"),
+            ),
+            TextField(
+              controller: confirmPasswordController,
+              obscureText: true,
+              decoration: InputDecoration(labelText: "Confirm Password"),
+            ),
             SizedBox(height: 20),
-            ElevatedButton(onPressed: registerTeacher, child: Text("Sign Up")),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: isLoading ? null : registerTeacher,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: isLoading
+                    ? CircularProgressIndicator(color: Colors.white)
+                    : Text("Sign Up", style: TextStyle(fontSize: 18, color: Colors.white)),
+              ),
+            ),
           ],
         ),
       ),

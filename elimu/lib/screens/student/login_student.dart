@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/auth_service.dart';
 import 'dashboard_student.dart';
 import 'signup_student.dart';
@@ -14,7 +15,9 @@ class LoginStudentPage extends StatefulWidget {
 class _LoginStudentPageState extends State<LoginStudentPage> {
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+
   bool isLoading = false;
+  String? foundParentEmail; // for password reset
 
   Future<void> loginUser() async {
     setState(() {
@@ -22,12 +25,9 @@ class _LoginStudentPageState extends State<LoginStudentPage> {
     });
 
     try {
-      // Search across all schools
+      // Search all schools for the student by username
       final schools = await FirebaseFirestore.instance.collection('schools').get();
-
       DocumentSnapshot? studentDoc;
-      String studentFullName = '';
-      String parentEmail = '';
 
       for (var school in schools.docs) {
         final query = await FirebaseFirestore.instance
@@ -39,44 +39,92 @@ class _LoginStudentPageState extends State<LoginStudentPage> {
 
         if (query.docs.isNotEmpty) {
           studentDoc = query.docs.first;
-          studentFullName = studentDoc['fullName'] ?? 'Student';
-          parentEmail = studentDoc['parentEmail'];
+          foundParentEmail = studentDoc['parentEmail'];
           break;
         }
       }
 
-      if (studentDoc != null) {
-        // Use parent's email for Firebase login
-        AuthService authService = AuthService();
-        var user = await authService.loginUser(parentEmail, passwordController.text.trim());
+      if (studentDoc == null || foundParentEmail == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("❌ We couldn’t find your username. Please check your spelling.")),
+        );
+        return;
+      }
 
-        if (user != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("✅ Login Successful!")),
-          );
+      // Try login with parent's email
+      AuthService authService = AuthService();
+      var user = await authService.loginUser(foundParentEmail!, passwordController.text.trim());
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => StudentDashboard()),
-          );
-        } else {
+      if (user != null) {
+        if (!user.emailVerified) {
+          await authService.logout();
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Your password was not correct, please try again.")),
+            SnackBar(content: Text("📧 Please ask your parent to verify their email before logging in.")),
           );
+          return;
         }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("✅ Login Successful!")),
+        );
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => StudentDashboard()));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("We couldn’t find your username. Please check your spelling.")),
+          SnackBar(content: Text("❌ Your password was not correct, please try again.")),
         );
       }
     } catch (e) {
+      print("Login error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Oops! Something went wrong. Try again.")),
+        SnackBar(content: Text("❌ Something went wrong. Please try again.")),
       );
     } finally {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  Future<void> resetPassword() async {
+    if (usernameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Please enter your username first.")));
+      return;
+    }
+
+    try {
+      // Reuse the logic to find parent email
+      final schools = await FirebaseFirestore.instance.collection('schools').get();
+      String? parentEmail;
+
+      for (var school in schools.docs) {
+        final query = await FirebaseFirestore.instance
+            .collection('schools')
+            .doc(school.id)
+            .collection('students')
+            .where('username', isEqualTo: usernameController.text.trim())
+            .get();
+
+        if (query.docs.isNotEmpty) {
+          parentEmail = query.docs.first['parentEmail'];
+          break;
+        }
+      }
+
+      if (parentEmail == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("❌ Could not find a parent email for that username.")),
+        );
+        return;
+      }
+
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: parentEmail);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("📩 Password reset email sent to your parent's inbox.")),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Failed to send password reset email.")),
+      );
     }
   }
 
@@ -96,7 +144,6 @@ class _LoginStudentPageState extends State<LoginStudentPage> {
               ),
               SizedBox(height: 30),
 
-              // Username input
               TextField(
                 controller: usernameController,
                 decoration: InputDecoration(
@@ -107,7 +154,6 @@ class _LoginStudentPageState extends State<LoginStudentPage> {
               ),
               SizedBox(height: 20),
 
-              // Password input (always visible)
               TextField(
                 controller: passwordController,
                 decoration: InputDecoration(
@@ -134,15 +180,18 @@ class _LoginStudentPageState extends State<LoginStudentPage> {
                 ),
               ),
 
+              SizedBox(height: 10),
+
+              TextButton(
+                onPressed: resetPassword,
+                child: Text("Forgot password? Reset it here", style: TextStyle(fontSize: 16)),
+              ),
+
               SizedBox(height: 20),
 
-              // Sign-up redirect
               TextButton(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const SignUpStudentPage()),
-                  );
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => const SignUpStudentPage()));
                 },
                 child: Text(
                   "Don't have an account? Sign up here!",
@@ -152,7 +201,6 @@ class _LoginStudentPageState extends State<LoginStudentPage> {
 
               SizedBox(height: 30),
 
-              // Fun Tip!
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
