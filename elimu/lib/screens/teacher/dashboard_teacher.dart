@@ -7,7 +7,7 @@ import 'create_quiz_page.dart';
 import 'view_quizzes_page.dart';
 import 'class_resources_page.dart';
 import 'grading_page.dart';
-//import 'teacher_messaging_page.dart';
+import '../../messaging/messaging_screen.dart';
 
 class TeacherDashboard extends StatefulWidget {
   const TeacherDashboard({Key? key}) : super(key: key);
@@ -144,6 +144,23 @@ class _TeacherDashboardState extends State<TeacherDashboard> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const GradingPage()),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.message),
+              title: Text('Messages'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MessagingScreen(
+                      userId: FirebaseAuth.instance.currentUser!.uid,
+                      fullName: teacherName,
+                      role: 'teacher',
+                      schoolDomain: schoolDomain,
+                    ),
+                  ),
                 );
               },
             ),

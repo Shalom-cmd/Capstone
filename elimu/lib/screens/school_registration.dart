@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore for saving school data
-import 'package:intl/intl.dart'; // For date validation
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart'; 
+//remove unnecessary fields eg start date, end date
 class SchoolRegistrationPage extends StatefulWidget {
   const SchoolRegistrationPage({Key? key}) : super(key: key);
 
@@ -12,7 +12,7 @@ class SchoolRegistrationPage extends StatefulWidget {
 class _SchoolRegistrationPageState extends State<SchoolRegistrationPage> {
   final TextEditingController schoolNameController = TextEditingController();
   final TextEditingController schoolDomainController = TextEditingController();
-  final TextEditingController schoolTypeController = TextEditingController(); // Public/Private
+  final TextEditingController schoolTypeController = TextEditingController(); 
   final TextEditingController cityController = TextEditingController();
   final TextEditingController stateController = TextEditingController();
   final TextEditingController countryController = TextEditingController();
@@ -24,7 +24,7 @@ class _SchoolRegistrationPageState extends State<SchoolRegistrationPage> {
   final TextEditingController startDateController = TextEditingController();
   final TextEditingController endDateController = TextEditingController();
   final TextEditingController schoolDescriptionController = TextEditingController();
-  final TextEditingController logoController = TextEditingController(); // For logo upload
+  final TextEditingController logoController = TextEditingController();
 
   // Register the school in Firestore
   Future<void> registerSchool() async {
@@ -46,7 +46,7 @@ class _SchoolRegistrationPageState extends State<SchoolRegistrationPage> {
       return;
     }
 
-    // Email validation (basic check)
+    // Email validation
     if (!RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").hasMatch(emailAddressController.text.trim())) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Please enter a valid email address')));
       return;
