@@ -1,8 +1,13 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'student/login_student.dart';
 import 'teacher/login_teacher.dart';
-import 'admin/login_admin.dart'; // Import Admin Login Page
-import 'school_registration.dart'; // Import the School Registration Page
+import 'admin/login_admin.dart';
+import 'student/signup_student.dart';
+import 'teacher/signup_teacher.dart';
+import 'admin/signup_admin.dart';
+import 'school_registration.dart';
+import 'about_us.dart';
 
 class LandingPage extends StatefulWidget {
   const LandingPage({Key? key}) : super(key: key);
@@ -11,8 +16,26 @@ class LandingPage extends StatefulWidget {
   _LandingPageState createState() => _LandingPageState();
 }
 
-class _LandingPageState extends State<LandingPage> {
-  bool _isLoginVisible = false; // Control the visibility of the login options
+class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin {
+  bool _isLoginVisible = false;
+  bool _isSignupVisible = false;
+
+  late final AnimationController _loginController;
+  late final AnimationController _signupController;
+
+  @override
+  void initState() {
+    super.initState();
+    _loginController = AnimationController(vsync: this, duration: Duration(milliseconds: 300));
+    _signupController = AnimationController(vsync: this, duration: Duration(milliseconds: 300));
+  }
+
+  @override
+  void dispose() {
+    _loginController.dispose();
+    _signupController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,22 +52,13 @@ class _LandingPageState extends State<LandingPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // LOGO
-                Text(
-                  'ELIMU LMS',
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-
-                // Navigation items
+                Text('ELIMU LMS',
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
                 Row(
                   children: [
-                    _buildNavItem(0, "About Us"),
+                    _buildAboutUsButton(context),
                     SizedBox(width: screenSize.width / 30),
-                    _buildRegisterSchoolButton(context), // Register School button in the header
+                    _buildRegisterSchoolButton(context),
                   ],
                 ),
               ],
@@ -52,72 +66,71 @@ class _LandingPageState extends State<LandingPage> {
           ),
         ),
       ),
-
-      // Full-screen background image
       body: Stack(
         children: [
           Positioned.fill(
             child: Image.asset(
               'assets/images/animatedkidss.jpg',
               fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
             ),
           ),
-
-          // Centered content
+          Container(color: Colors.black.withOpacity(0.2)),
           Center(
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: screenSize.width / 3),
-              child: Card(
-                elevation: 10,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                child: Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+              padding: EdgeInsets.symmetric(horizontal: screenSize.width / 10),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "🎓 Welcome to Elimu LMS",
+                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        "Welcome to Elimu LMS🎓",
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blueAccent,
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                      // Register School Button
-                      _buildRegisterSchoolButton(context),
-                      SizedBox(height: 20),
-                      // Login Button
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _isLoginVisible = !_isLoginVisible; // Toggle login options
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,  // Use backgroundColor instead of primary
-                          padding: EdgeInsets.symmetric(vertical: 15),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        child: Text(
-                          "Login",
-                          style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                      // Show login options (Admin, Teacher, Student) based on _isLoginVisible
-                      if (_isLoginVisible) ...[
-                        _buildRoleButton(context, "Student"),
-                        SizedBox(height: 10),
-                        _buildRoleButton(context, "Teacher"),
-                        SizedBox(height: 10),
-                        _buildRoleButton(context, "Admin"),
-                      ]
+                      _buildMainActionButton("Sign Up", Colors.blueAccent, () {
+                        setState(() {
+                          _isSignupVisible = !_isSignupVisible;
+                          _isLoginVisible = false;
+                          _isSignupVisible ? _signupController.forward() : _signupController.reverse();
+                        });
+                      }),
+                      SizedBox(width: 20),
+                      _buildMainActionButton("Log In", Colors.blueAccent, () {
+                        setState(() {
+                          _isLoginVisible = !_isLoginVisible;
+                          _isSignupVisible = false;
+                          _isLoginVisible ? _loginController.forward() : _loginController.reverse();
+                        });
+                      }),
                     ],
                   ),
-                ),
+                  SizedBox(height: 30),
+                  AnimatedSize(
+                    duration: Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    child: Column(
+                      children: [
+                        if (_isSignupVisible) ...[
+                          _buildSignupRoleButton(context, "Student", Icons.school),
+                          SizedBox(height: 10),
+                          _buildSignupRoleButton(context, "Teacher", Icons.person),
+                          SizedBox(height: 10),
+                          _buildSignupRoleButton(context, "Admin", Icons.admin_panel_settings),
+                        ],
+                        if (_isLoginVisible) ...[
+                          _buildLoginRoleButton(context, "Student", Icons.school),
+                          SizedBox(height: 10),
+                          _buildLoginRoleButton(context, "Teacher", Icons.person),
+                          SizedBox(height: 10),
+                          _buildLoginRoleButton(context, "Admin", Icons.admin_panel_settings),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -126,42 +139,29 @@ class _LandingPageState extends State<LandingPage> {
     );
   }
 
-  // Navigation items for header (About Us)
-  Widget _buildNavItem(int index, String title) {
+  Widget _buildAboutUsButton(BuildContext context) {
     return InkWell(
-      onHover: (value) {
-        setState(() {
-          // Update hover effect
-        });
-      },
       onTap: () {
-        // Handle navigation (if required)
+        Navigator.push(context, MaterialPageRoute(builder: (context) => AboutUsPage()));
       },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.white,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+      child: Container(
+        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+        decoration: BoxDecoration(
+          color: Colors.green,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          "About Us",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
       ),
     );
   }
 
-  // Register School button in the header
   Widget _buildRegisterSchoolButton(BuildContext context) {
     return InkWell(
       onTap: () {
-        // Navigate to the School Registration Page
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => SchoolRegistrationPage()),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => SchoolRegistrationPage()));
       },
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
@@ -171,49 +171,68 @@ class _LandingPageState extends State<LandingPage> {
         ),
         child: Text(
           "Register Your School",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
         ),
       ),
     );
   }
 
-  // Login role buttons (Student, Teacher, Admin)
-  Widget _buildRoleButton(BuildContext context, String role) {
+  Widget _buildMainActionButton(String text, Color color, VoidCallback onPressed) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        padding: EdgeInsets.symmetric(horizontal: 30, vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      child: Text(text, style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+    );
+  }
+
+  Widget _buildLoginRoleButton(BuildContext context, String role, IconData icon) {
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton(
+      child: ElevatedButton.icon(
+        icon: Icon(icon, color: Colors.white),
+        label: Text("Login as $role", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blueAccent,  // Use backgroundColor instead of primary
+          backgroundColor: Colors.blueAccent,
           padding: EdgeInsets.symmetric(vertical: 15),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
         onPressed: () {
-          // Navigate to the appropriate login page
           if (role == "Student") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => LoginStudentPage()),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (_) => LoginStudentPage()));
           } else if (role == "Teacher") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => LoginTeacherPage()),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (_) => LoginTeacherPage()));
           } else if (role == "Admin") {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => LoginAdminPage()), // Navigate to Admin Login Page
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (_) => LoginAdminPage()));
           }
         },
-        child: Text(
-          "Login as $role",
-          style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildSignupRoleButton(BuildContext context, String role, IconData icon) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        icon: Icon(icon, color: Colors.white),
+        label: Text("Sign Up as $role", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blueAccent,
+          padding: EdgeInsets.symmetric(vertical: 15),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
+        onPressed: () {
+          if (role == "Student") {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => SignUpStudentPage()));
+          } else if (role == "Teacher") {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => SignUpTeacherPage()));
+          } else if (role == "Admin") {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => SignUpAdminPage()));
+          }
+        },
       ),
     );
   }
