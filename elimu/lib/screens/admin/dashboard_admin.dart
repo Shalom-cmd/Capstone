@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'class_roster_page.dart'; 
-//import '../../messaging/messaging_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'class_roster_page.dart';
+import '../landing_page.dart';
+import '../../messaging/messaging_screen.dart';
 
 class AdminDashboardPage extends StatelessWidget {
   final String schoolDomain;
@@ -12,19 +14,70 @@ class AdminDashboardPage extends StatelessWidget {
     required this.adminName,
   });
 
+  void logout(BuildContext context) async {
+    await FirebaseAuth.instance.signOut();
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LandingPage()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final adminId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
     return Scaffold(
       appBar: AppBar(
         title: Text("Admin Dashboard"),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.logout),
-            onPressed: () {
-              // Add logout logic
-            },
-          )
-        ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              child: Text(
+                'Welcome, $adminName 👋',
+                style: TextStyle(fontSize: 20, color: Colors.white),
+              ),
+              decoration: BoxDecoration(color: Theme.of(context).primaryColor),
+            ),
+            ListTile(
+              leading: Icon(Icons.school),
+              title: Text('Class Roster'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ClassRosterPage(schoolDomain: schoolDomain),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.message),
+              title: Text('Messages'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MessagingScreen(
+                      userId: adminId,
+                      fullName: adminName,
+                      role: 'admin',
+                      schoolDomain: schoolDomain,
+                    ),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.logout),
+              title: Text('Logout'),
+              onTap: () => logout(context),
+            ),
+          ],
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -36,40 +89,9 @@ class AdminDashboardPage extends StatelessWidget {
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 30),
-
-            // Button to View Class Roster
-            ElevatedButton.icon(
-              icon: Icon(Icons.school),
-              label: Text("View Class Rosters"),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ClassRosterPage(schoolDomain: schoolDomain),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                minimumSize: Size(double.infinity, 60),
-                textStyle: TextStyle(fontSize: 18),
-              ),
-            ),
-
-            SizedBox(height: 20),
-
-            // Add more buttons for other sections later (users, reports, etc.)
-            ElevatedButton.icon(
-              icon: Icon(Icons.settings),
-              label: Text("School Settings (Coming Soon)"),
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Coming soon!")),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                minimumSize: Size(double.infinity, 60),
-                textStyle: TextStyle(fontSize: 18),
-              ),
+            Text(
+              "Use the ☰ menu to access management tools.",
+              style: TextStyle(fontSize: 16),
             ),
           ],
         ),
