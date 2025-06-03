@@ -29,15 +29,3 @@ Integrate quiz auto-grading and progress analytics for teachers.
 Explore the use of voice notes and multilingual support to enhance accessibility.
 
 Optimize UI for mobile devices to ensure smooth cross-platform usage.
-
-# AI Disclosure:
-I used AI (ChatGPT Free Version) to:
-
-Summarize Dart and Flutter documentation
-
-Debug code and understand error messages
-
-Get design ideas and UI/UX suggestions
-
-Clarify Firebase rules and features
-##
